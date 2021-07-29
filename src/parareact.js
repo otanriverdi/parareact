@@ -107,10 +107,24 @@ function commitWork(fiber) {
   }
 
   const domParent = fiber.parent.dom;
-  domParent.appendChild(fiber.dom);
+
+  // if the fiber is placement, we append the dom node
+  if (fiber.effectTag === 'PLACEMENT' && fiber.dom !== null) {
+    domParent.appendChild(fiber.dom);
+    // if its deletion, we remove it
+  } else if (fiber.effectTag === 'DELETION') {
+    domParent.removeChild(fiber.dom);
+    // if its update, we call the new update dom function
+  } else if (fiber.effectTag === 'UPDATE' && fiber.dom !== null) {
+    updateDom(fiber.dom, fiber.alternate.props, fiber.props);
+  }
 
   commitWork(fiber.child);
   commitWork(fiber.sibling);
+}
+
+function updateDom(dom, prevProps, nextProps) {
+  // TODO
 }
 
 function reconcileChildren(wipFiber, elements) {
