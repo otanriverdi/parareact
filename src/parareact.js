@@ -47,4 +47,31 @@ Parareact.render = function (element, container) {
   container.appendChild(dom);
 };
 
+let nextUnitOfWork = null;
+
+// start the loop
+requestIdleCallback(workLoop);
+
+function workLoop(deadline) {
+  // determines when we should give back the control to browser
+  let shouldYield = false;
+
+  console.log('it runs');
+
+  // when there is a unit of work and we shouldnt yield
+  while (nextUnitOfWork && !shouldYield) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+
+    // if deadline is here, yield to the browser
+    shouldYield = deadline.timeRemaining() < 1;
+  }
+
+  // ask the browser to execute the loop again next time
+  requestIdleCallback(workLoop);
+}
+
+function performUnitOfWork(fiber) {
+  // TODO
+}
+
 export default Parareact;
