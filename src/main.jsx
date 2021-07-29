@@ -1,6 +1,6 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
+import Parareact from './parareact';
 
+/** @jsx Parareact.createElement */
 const element = (
   <div id="foo">
     <a>bar</a>
@@ -9,4 +9,4 @@ const element = (
 );
 
 const container = document.getElementById('root');
-ReactDOM.render(element, container);
+Parareact.render(element, container);
