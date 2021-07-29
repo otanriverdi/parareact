@@ -1,0 +1,21 @@
+{
+  "parserOptions": {
+    "ecmaVersion": 2019,
+    "sourceType": "module", // "script" if you are not using modules
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "extends": [
+    "eslint:recommended",
+    "eslint-config-prettier" // this should always be last
+  ],
+  "rules": {
+    "strict": ["error", "never"]
+  },
+  "env": {
+    "browser": true,
+    "jest": true
+  },
+  "overrides": []
+}
