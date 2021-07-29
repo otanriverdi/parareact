@@ -24,12 +24,14 @@ function createTextElement(text) {
 
 Parareact.render = function (element, container) {
   // sets the root node of the linked list and it will trigger the loop
-  nextUnitOfWork = {
+  wipRoot = {
     dom: container,
     props: {
       children: [element],
     },
   };
+
+  nextUnitOfWork = wipRoot;
 };
 
 function createDom(fiber) {
@@ -51,6 +53,9 @@ function createDom(fiber) {
 
 let nextUnitOfWork = null;
 
+// root of our virual dom
+let wipRoot = null;
+
 // start the loop
 requestIdleCallback(workLoop);
 
@@ -68,19 +73,39 @@ function workLoop(deadline) {
     shouldYield = deadline.timeRemaining() < 1;
   }
 
+  // if there are no more work, start the rendering phase
+  if (!nextUnitOfWork && wipRoot) {
+    commitRoot();
+  }
+
   // ask the browser to execute the loop again next time
   requestIdleCallback(workLoop);
+}
+
+function commitRoot() {
+  // starts the committing phase from the first child of the root
+  commitWork(wipRoot.child);
+
+  // clears root so commit will only run a single time
+  wipRoot = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) {
+    return;
+  }
+
+  const domParent = fiber.parent.dom;
+  domParent.appendChild(fiber.dom);
+
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
 }
 
 function performUnitOfWork(fiber) {
   // if the fiber doesn't have a dom, create it
   if (!fiber.dom) {
     fiber.dom = createDom(fiber);
-  }
-
-  // if the fiber has a parent, append this dom to parent dom
-  if (fiber.parent) {
-    fiber.parent.dom.appendChild(fiber.dom);
   }
 
   // for each child, we create a fiber
