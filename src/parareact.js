@@ -100,14 +100,18 @@ function commitWork(fiber) {
     return;
   }
 
-  const domParent = fiber.parent.dom;
+  let domParentFiber = fiber.parent;
+  while (!domParentFiber.dom) {
+    domParentFiber = domParentFiber.parent;
+  }
+  const domParent = domParentFiber.dom;
 
   // if the fiber is placement, we append the dom node
   if (fiber.effectTag === 'PLACEMENT' && fiber.dom !== null) {
     domParent.appendChild(fiber.dom);
     // if its deletion, we remove it
   } else if (fiber.effectTag === 'DELETION') {
-    domParent.removeChild(fiber.dom);
+    commitDeletion(fiber, domParent);
     // if its update, we call the new update dom function
   } else if (fiber.effectTag === 'UPDATE' && fiber.dom !== null) {
     updateDom(fiber.dom, fiber.alternate.props, fiber.props);
@@ -115,6 +119,14 @@ function commitWork(fiber) {
 
   commitWork(fiber.child);
   commitWork(fiber.sibling);
+}
+
+function commitDeletion(fiber, domParent) {
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom);
+  } else {
+    commitDeletion(fiber.child, domParent);
+  }
 }
 
 // checks if the prop is an event listener
@@ -232,15 +244,14 @@ function reconcileChildren(wipFiber, elements) {
 }
 
 function performUnitOfWork(fiber) {
-  // if the fiber doesn't have a dom, create it
-  if (!fiber.dom) {
-    fiber.dom = createDom(fiber);
+  // when using function components the type that will be passed will be the function itself
+  const isFunctionComponent = fiber.type instanceof Function;
+
+  if (isFunctionComponent) {
+    updateFunctionComponent(fiber);
+  } else {
+    updateHostComponent(fiber);
   }
-
-  // for each child, we create a fiber
-  const elements = fiber.props.children;
-
-  reconcileChildren(fiber, elements);
 
   // if there is a children, we return it as the next unit of work
   if (fiber.child) return fiber.child;
@@ -252,6 +263,25 @@ function performUnitOfWork(fiber) {
 
     nextFiber = nextFiber.parent;
   }
+}
+
+function updateFunctionComponent(fiber) {
+  // calling the function would return the children
+  const children = [fiber.type(fiber.props)];
+
+  reconcileChildren(fiber, children);
+}
+
+function updateHostComponent(fiber) {
+  // if the fiber doesn't have a dom, create it
+  if (!fiber.dom) {
+    fiber.dom = createDom(fiber);
+  }
+
+  // for each child, we create a fiber
+  const elements = fiber.props.children;
+
+  reconcileChildren(fiber, elements);
 }
 
 export default Parareact;
