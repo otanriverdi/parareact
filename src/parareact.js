@@ -32,6 +32,8 @@ Parareact.render = function (element, container) {
     alternate: currentRoot,
   };
 
+  // reset deletions
+  deletions = [];
   nextUnitOfWork = wipRoot;
 };
 
@@ -60,6 +62,9 @@ let wipRoot = null;
 // last rendered virtual dom
 let currentRoot = null;
 
+// fibers to be deleted
+let deletions = null;
+
 // start the loop
 requestIdleCallback(workLoop);
 
@@ -85,6 +90,7 @@ function workLoop(deadline) {
 }
 
 function commitRoot() {
+  deletions.forEach(commitWork);
   // starts the committing phase from the first child of the root
   commitWork(wipRoot.child);
 
@@ -109,17 +115,54 @@ function commitWork(fiber) {
 
 function reconcileChildren(wipFiber, elements) {
   let index = 0;
+
+  // we will also iterate over the children of the old fiber if it exists
+  let oldFiber = wipFiber.alternate && wipFiber.alternate.child;
+
   let prevSibling = null;
 
-  while (index < elements.length) {
+  // while there is either an element or and oldFiber
+  while (index < elements.length || oldFiber != null) {
     const element = elements[index];
+    let newFiber = null;
 
-    const newFiber = {
-      type: element.type,
-      props: element.props,
-      parent: wipFiber,
-      dom: null,
-    };
+    // check if new and old is the same type
+    const sameType = oldFiber && element && element.type == oldFiber.type;
+
+    // if they are the same type we need to update the node
+    if (sameType) {
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom,
+        parent: wipFiber,
+        alternate: oldFiber,
+        effectTag: 'UPDATE',
+      };
+    }
+
+    // if there is a new element of different type we need to create node
+    if (element && !sameType) {
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null, // because this is new
+        parent: wipFiber,
+        alternate: null,
+        effectTag: 'PLACEMENT',
+      };
+    }
+
+    // if there is no new element we need to delete the node
+    if (oldFiber && !sameType) {
+      oldFiber.effectTag = 'DELETION';
+      deletions.push(oldFiber);
+    }
+
+    // set the oldFiber to continue the loop
+    if (oldFiber) {
+      oldFiber = oldFiber.sibling;
+    }
 
     if (index === 0) {
       wipFiber.child = newFiber;
