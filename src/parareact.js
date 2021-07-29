@@ -43,13 +43,7 @@ function createDom(fiber) {
       ? document.createTextNode('')
       : document.createElement(fiber.type);
 
-  const isProp = key => key !== 'children';
-
-  Object.keys(fiber.props)
-    .filter(isProp)
-    .forEach(prop => {
-      dom[prop] = fiber.props[prop];
-    });
+  updateDom(dom, {}, fiber.props);
 
   return dom;
 }
@@ -123,8 +117,56 @@ function commitWork(fiber) {
   commitWork(fiber.sibling);
 }
 
+// checks if the prop is an event listener
+const isEvent = key => key.startsWith('on');
+
+// checks if the prop is not children or event handler
+const isProperty = key => key !== 'children' && !isEvent(key);
+
+// checks if the prop is new
+const isNew = (prev, next) => key => prev[key] !== next[key];
+
+// checks if the prop doesnt exist anymore
+const isGone = (prev, next) => key => !(key in next);
+
 function updateDom(dom, prevProps, nextProps) {
-  // TODO
+  // Remove outdated event listeners
+  Object.keys(prevProps)
+    .filter(isEvent)
+    // if it exists in the nextProps, check if its new
+    .filter(key => !(key in nextProps) || isNew(prevProps, nextProps)(key))
+    .forEach(name => {
+      // event name is the 'on' removed
+      const eventType = name.toLowerCase().substring(2);
+
+      dom.removeEventListener(eventType, prevProps[name]);
+    });
+
+  // Remove old props
+  Object.keys(prevProps)
+    .filter(isProperty)
+    .filter(isGone(prevProps, nextProps))
+    .forEach(name => {
+      dom[name] = '';
+    });
+
+  // Set new or changed props
+  Object.keys(nextProps)
+    .filter(isProperty)
+    .filter(isNew(prevProps, nextProps))
+    .forEach(name => {
+      dom[name] = nextProps[name];
+    });
+
+  // Add new event listeners
+  Object.keys(nextProps)
+    .filter(isEvent)
+    .filter(isNew(prevProps, nextProps))
+    .forEach(name => {
+      const eventType = name.toLowerCase().substring(2);
+
+      dom.addEventListener(eventType, nextProps[name]);
+    });
 }
 
 function reconcileChildren(wipFiber, elements) {
