@@ -262,6 +262,7 @@ function performUnitOfWork(fiber) {
     if (nextFiber.sibling) return nextFiber.sibling;
 
     nextFiber = nextFiber.parent;
+    
   }
 }
 
